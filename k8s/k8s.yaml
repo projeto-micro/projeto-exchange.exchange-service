@@ -1,0 +1,69 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: exchange-configmap
+  labels:
+    app: exchange
+data:
+  EXCHANGE_PROVIDER_URL: "https://economia.awesomeapi.com.br/json/last/{from_currency}-{to_currency}"
+  EXCHANGE_CACHE_TTL_SECONDS: "60"
+  EXCHANGE_REQUEST_TIMEOUT_SECONDS: "5"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: exchange-secrets
+  labels:
+    app: exchange
+type: Opaque
+stringData:
+  EXCHANGE_PROVIDER_TOKEN: ""
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: exchange
+  labels:
+    app: exchange
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: exchange
+  template:
+    metadata:
+      labels:
+        app: exchange
+    spec:
+      containers:
+        - name: exchange
+          image: projetomicro/exchange:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: exchange-configmap
+            - secretRef:
+                name: exchange-secrets
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: exchange
+  labels:
+    app: exchange
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      targetPort: 8080
+  selector:
+    app: exchange
